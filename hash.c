@@ -3,22 +3,25 @@
 #include <string.h>
 #include "hash.h"
 #define TAM_INI 50
+#define FACTOR_CARGA_MAX 0.7
+#define FACTOR_CARGA_MIN 0.3
+#define AUMENTO_TAM 2
 
 
-enum estados {
-	vacio, 
-	ocupado, 
-	borrado
-};
+typedef enum estados {
+	VACIO,
+	OCUPADO,
+	BORRADO
+}estado_t;
 
-typedef struct nodo{
+typedef struct hash_campo{
 	const char* clave;
 	void* valor;
-	enum estados estado;
-}nodo_t;
+	estado_t estado;
+} hash_campo_t;
 
 struct hash{
-	nodo_t** tabla_hash;
+	campo_t* tabla_hash;
 	size_t usados; //Elementos ocupados.
 	size_t tamanio; //Largo de la tabla de hash
 	hash_destruir_dato_t destruir_dato;
@@ -31,21 +34,20 @@ struct hash_iter{
 // Crea un nodo.
 // Post: devuelve un nuevo nodo con clave y valor en NULL y estado vací.
 
-nodo_t* nodo_crear(){
-	nodo_t* nodo = malloc(sizeof(nodo_t));
-	if (nodo == NULL) return NULL;
-
-	nodo->clave = NULL;
-	nodo->valor = NULL;
-	nodo->estado = vacio;
-	return nodo;
+hash_campo_t hash_campo_crear(){
+	hash_campo_t campo;
+	campo.clave = NULL;
+	campo.valor = NULL;
+	campo.estado = VACIO;
+	return campo;
 }
 
+size_t funcion_hash(const char* clave);
 
 hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
 	hash_t* hash = malloc(sizeof(hash_t));
 	if (!hash) return NULL;
-	hash->tabla_hash = malloc(TAM_INI*sizeof(nodo_t));
+	hash->tabla_hash = malloc(TAM_INI*sizeof(campo_t));
 	if (!hash->tabla_hash){
 		free(hash);
 		return NULL;
@@ -54,12 +56,60 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
 	hash->usados = 0;
 	hash->destruir_dato = destruir_dato;
 	for (int i = 0; i < hash->tamanio; i++){
-		hash->tabla_hash[i] = nodo_crear();
+		hash->tabla_hash[i] = hash_campo_crear();
 	}
 	return hash;
 }
 
-bool hash_guardar(hash_t *hash, const char *clave, void *dato);
+/*Recibe una posicion donde sucede una colision y resuelve dicha colision. Devuelve
+una nueva posicion proximo a la colision.*/
+size_t funcion_perturbacion(hash_t* hash, size_t i){
+	while(hash->tabla_hash[i].estado==OCUPADO){
+		i++;
+	}
+	return i;
+}
+
+/*Recibe un hash creado y un numero y multiplica el tamanio actual del hash por
+el numero pasado por parametro. Devuelve false en caso de error.*/
+bool redimensionar_hash(hast_t* hash,size_t n){
+	size_t tamanio_nuevo=hash->tamanio*n;
+	hash_campo_t* tabla_nueva=malloc(sizeof(hash_campo_t)*n);
+	if(!tabla_nueva)
+		return false;
+	for(size_t i=0;i<hash->tamanio; i++){
+		hash_campo_t actual=hash->tabla_hash[i];
+		if(actual.estado==OCUPADO){
+			size_t i=funcion_hash(actual.clave)%tamanio_nuevo;
+			if(tabla_nueva[i].estado==OCUPADO)
+				i=funcion_perturbacion(i);
+			tabla_nueva[i]=actual;
+		}
+		else if(actual.estado==BORRADO){
+			hash->usados -=1;
+		}
+	}
+	free(hash->tabla_hash);
+	hash->tabla_hash=tabla_nueva;
+	hash->tamanio=tamanio_nuevo;
+	return true;
+
+}
+
+bool hash_guardar(hash_t *hash, const char *clave, void *dato){
+	double factor_carga_actual=(hash->tamanio+1)/hash->ocupados;
+	if(factor_carga_actual>FACTOR_CARGA_MAX){
+		if(!redimensionar_hash(hash,AUMENTO_TAM))
+			return false;
+	}
+	size_t i=funcion_hash(clave)%(hash->tamanio);
+	if(hash->tabla_hash[i].estado==OCUPADO)
+		i=funcion_perturbacion(i);
+	hash->tabla_hash[i].clave=strdup(clave);
+	hash->tabla_hash[i].valor=dato;
+	return true;
+}
+
 void *hash_borrar(hash_t *hash, const char *clave);
 void *hash_obtener(const hash_t *hash, const char *clave);
 bool hash_pertenece(const hash_t *hash, const char *clave);
