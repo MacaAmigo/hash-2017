@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <string.h>
 #include "hash.h"
+#define TAM_INI 50
+
 
 enum estados {
 	vacio, 
@@ -40,7 +42,23 @@ nodo_t* nodo_crear(){
 }
 
 
-hash_t *hash_crear(hash_destruir_dato_t destruir_dato);
+hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
+	hash_t* hash = malloc(sizeof(hash_t));
+	if (!hash) return NULL;
+	hash->tabla_hash = malloc(TAM_INI*sizeof(nodo_t));
+	if (!hash->tabla_hash){
+		free(hash);
+		return NULL;
+	}
+	hash->tamanio = TAM_INI;
+	hash->usados = 0;
+	hash->destruir_dato = destruir_dato;
+	for (int i = 0; i < hash->tamanio; i++){
+		hash->tabla_hash[i] = nodo_crear();
+	}
+	return hash;
+}
+
 bool hash_guardar(hash_t *hash, const char *clave, void *dato);
 void *hash_borrar(hash_t *hash, const char *clave);
 void *hash_obtener(const hash_t *hash, const char *clave);
