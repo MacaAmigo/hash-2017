@@ -64,8 +64,10 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
 /*Recibe una posicion donde sucede una colision y resuelve dicha colision. Devuelve
 una nueva posicion proximo a la colision.*/
 size_t funcion_perturbacion(hash_t* hash, size_t i){
-	while(hash->tabla_hash[i].estado!=VACIO){
+	while(hash->tabla_hash[i].estado==OCUPADO){
 		i++;
+		if(i==hash->tamanio)
+			i=0;
 	}
 	return i;
 }
@@ -95,11 +97,14 @@ bool redimensionar_hash(hast_t* hash,size_t n){
 	return true;
 
 }
+
 bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 	size_t i=funcion_hash(clave)%(hash->tamanio);
 	hash_campo_t actual=hash->tabla_hash[i];
 	while(actual.estado!=VACIO && strcmp(actual.clave,clave)!=0){
 		i++;
+		if(i==hash->tamanio)
+			i=0;
 		actual=hash->tabla_hash[i];
 	}
 	if(actual.estado==VACIO){
@@ -115,17 +120,73 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 	return true;
 }
 
-
 void *hash_borrar(hash_t *hash, const char *clave);
-void *hash_obtener(const hash_t *hash, const char *clave);
+
+void *hash_obtener(const hash_t *hash, const char *clave){
+	size_t i=funcion_hash(clave)%(hash->tamanio);
+	hash_campo_t actual=hash->tabla_hash[i];
+	while(actual.estado!=VACIO && strcmp(actual.clave,clave)!=0){
+		i++;
+		if(i==hash->tamanio)
+			i=0;
+		actual=hash->tabla_hash[i];
+	}
+	if(actual.estado==VACIO)
+		return NULL;
+	return actual.valor;
+}
+
 bool hash_pertenece(const hash_t *hash, const char *clave);
-size_t hash_cantidad(const hash_t *hash);
+
+size_t hash_cantidad(const hash_t *hash){
+	size_t cantidad=0;
+	for(size_t i=0; i<tamanio; i++){
+		hash_campo_t actual= hash->tabla_hash[i];
+		if(actual.estado==OCUPADO)
+			cantidad++;
+	}
+	return cantidad;
+}
+
 void hash_destruir(hash_t *hash);
 
 /* Iterador del hash */
 
-hash_iter_t *hash_iter_crear(const hash_t *hash);
-bool hash_iter_avanzar(hash_iter_t *iter);
-const char *hash_iter_ver_actual(const hash_iter_t *iter);
-bool hash_iter_al_final(const hash_iter_t *iter);
-void hash_iter_destruir(hash_iter_t* iter);
+hash_iter_t *hash_iter_crear(const hash_t *hash){
+	hash_iter_t iter=malloc(sizeof(hash_iter_t));
+	if(!iter)
+		return NULL;
+	iter->hash=hash;
+	size_t i=0;
+	while(hash->tabla_hash[i].estado!=OCUPADO){
+		i++;
+	}
+	iter->pos_actual=hash->tabla_hash[i];
+	return iter;
+}
+
+bool hash_iter_avanzar(hash_iter_t *iter){
+	if(i>=iter->hash->tamanio)
+		return false;
+	hash_campo_t actual=iter->hash->tabla_hash[iter->pos_actual];
+	while(actual.estado!=OCUPADO && (iter->pos_actual)<(iter->hash->tamanio)){
+		(iter->pos_actual)++;
+		actual=(iter->hash->tabla_hash)[iter->pos_actual];
+	}
+	if((iter->pos_actual)<tamanio)
+		return true;
+	return false;
+}
+
+const char* hash_iter_ver_actual(const hash_iter_t *iter){
+	return (iter->hash->tabla_hash)[iter->pos_actual].calve;
+}
+
+bool hash_iter_al_final(const hash_iter_t *iter){
+	return (iter->pos_actual)>=(iter->hash->tamanio);
+}
+
+void hash_iter_destruir(hash_iter_t* iter){
+	free(iter);
+	return;
+}
