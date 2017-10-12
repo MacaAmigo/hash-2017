@@ -32,7 +32,7 @@ struct hash_iter{
 };
 
 // Crea un nodo.
-// Post: devuelve un nuevo nodo con clave y valor en NULL y estado vací.
+// Post: devuelve un nuevo nodo con clave y valor en NULL y estado vacío.
 
 hash_campo_t hash_campo_crear(){
 	hash_campo_t campo;
@@ -42,7 +42,32 @@ hash_campo_t hash_campo_crear(){
 	return campo;
 }
 
-size_t funcion_hash(const char* clave);
+
+//Función de hash
+//Fowler–Noll–Vo hash function
+//Función de hash que devuelve una posición de una tabla hash.
+//Pre: Recibe una clave no vacía, y el largo del arreglo.
+//Devuelve una posición.
+//http://codereview.stackexchange.com/questions/85556/simple-string-hashing-algorithm-implementation	
+size_t funcion_hashing(const char *clave, size_t largo_primo){
+	size_t hash = 0x811c9dc5;
+	while (*clave){
+		hash ^= (unsigned char) *clave++;
+		hash *= 0x01000193;
+	}
+	return (hash % largo_primo);
+}
+
+/*Recibe una posicion donde sucede una colision y resuelve dicha colision. Devuelve
+una nueva posicion proximo a la colision.*/
+size_t funcion_perturbacion(hash_t* hash, size_t i){
+	while(hash->tabla_hash[i].estado==OCUPADO){
+		i++;
+		if(i==hash->tamanio)
+			i=0;
+	}
+	return i;
+}
 
 hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
 	hash_t* hash = malloc(sizeof(hash_t));
@@ -61,29 +86,19 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
 	return hash;
 }
 
-/*Recibe una posicion donde sucede una colision y resuelve dicha colision. Devuelve
-una nueva posicion proximo a la colision.*/
-size_t funcion_perturbacion(hash_t* hash, size_t i){
-	while(hash->tabla_hash[i].estado==OCUPADO){
-		i++;
-		if(i==hash->tamanio)
-			i=0;
-	}
-	return i;
-}
-
 /*Recibe un hash creado y un numero y multiplica el tamanio actual del hash por
 el numero pasado por parametro. Devuelve false en caso de error.*/
 bool redimensionar_hash(hast_t* hash,size_t n){
-	size_t tamanio_nuevo=hash->tamanio*n;
-	hash_campo_t* tabla_nueva=malloc(sizeof(hash_campo_t)*n);
+	size_t tamanio_nuevo=hash->tamanio*n;  //agranda el tamanio actual multiplicado x n
+	hash_campo_t* tabla_nueva=malloc(sizeof(hash_campo_t)*n);  //pide memoria para la tabla
 	if(!tabla_nueva)
 		return false;
 	for(size_t i=0;i<hash->tamanio; i++){
-		hash_campo_t actual=hash->tabla_hash[i];
-		if(actual.estado==OCUPADO){
-			size_t i=funcion_hash(actual.clave)%tamanio_nuevo;
-			if(tabla_nueva[i].estado==OCUPADO)
+		hash_campo_t actual=hash->tabla_hash[i];    //actual=nodo
+		if(actual.estado==OCUPADO){                 //si el nodo esta ocupado
+			size_t i = funcion_hashing(actual.clave, tamanio_nuevo); //rehashea
+			if(tabla_nueva[i].estado==OCUPADO)  //tabla nueva no tiene [i]?
+				//Falta crear los nodos de la tabla_nueva
 				i=funcion_perturbacion(i);
 			tabla_nueva[i]=actual;
 		}
@@ -99,7 +114,7 @@ bool redimensionar_hash(hast_t* hash,size_t n){
 }
 
 bool hash_guardar(hash_t *hash, const char *clave, void *dato){
-	size_t i=funcion_hash(clave)%(hash->tamanio);
+	size_t i = funcion_hashing(clave, hash->tamanio); 
 	hash_campo_t actual=hash->tabla_hash[i];
 	while(actual.estado!=VACIO && strcmp(actual.clave,clave)!=0){
 		i++;
@@ -120,10 +135,29 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 	return true;
 }
 
-void *hash_borrar(hash_t *hash, const char *clave);
+void *hash_borrar(hash_t *hash, const char *clave){
+	if ((1+hash_cantidad(hash)/hash->tamanio) <= FACTOR_CARGA_MIN){ 
+		if(!hash_redimensionar(hash, hash->tamanio/2)) return NULL;
+	}
+	if (!hash_pertenece(hash,clave)) return NULL;
+	size_t pos = funcion_hashing(clave, hash->tamanio);	
+	while (pos < hash->tamanio){
+		if (hash->tabla_hash[pos]->clave != NULL){ // Valido porque si clave es NULL, strcmp pincha.
+			if (strcmp(hash->tabla_hash[pos]->clave , clave) == 0 ) break; //Si la clave es la misma, entonces corto iteracion para quedarme con la posición.
+		}
+		pos++;	
+	}
+	hash->tabla_hash[pos]->estado = borrado;
+	free((char*)hash->tabla_hash[pos]->clave);
+	hash->tabla_hash[pos]->clave = NULL;
+	void* dato = hash->tabla_hash[pos]->valor;
+	hash->tabla_hash[pos]->valor = NULL;
+	hash->usados--;
+	return dato;
+}
 
 void *hash_obtener(const hash_t *hash, const char *clave){
-	size_t i=funcion_hash(clave)%(hash->tamanio);
+	size_t i = funcion_hashing(clave, hash->tamanio); 
 	hash_campo_t actual=hash->tabla_hash[i];
 	while(actual.estado!=VACIO && strcmp(actual.clave,clave)!=0){
 		i++;
@@ -136,7 +170,19 @@ void *hash_obtener(const hash_t *hash, const char *clave){
 	return actual.valor;
 }
 
-bool hash_pertenece(const hash_t *hash, const char *clave);
+bool hash_pertenece(const hash_t *hash, const char *clave){
+	size_t pos = funcion_hashing(clave, hash->tamanio);
+	if  (hash->tabla_hash[pos]->estado == vacio ) return false;
+	while (pos < hash->tamanio && hash->tabla_hash[pos]->estado != vacio){
+		if (hash->tabla_hash[pos]->estado == ocupado){
+			if (strcmp(hash->tabla_hash[pos]->clave , clave) == 0) return true;
+		}
+		pos++;		
+	}
+
+	return false;
+}
+	
 
 size_t hash_cantidad(const hash_t *hash){
 	size_t cantidad=0;
@@ -148,7 +194,19 @@ size_t hash_cantidad(const hash_t *hash){
 	return cantidad;
 }
 
-void hash_destruir(hash_t *hash);
+void hash_destruir(hash_t *hash){
+	size_t pos = 0;
+	while (pos < hash->tamanio){
+		if (hash->destruir_dato){
+			hash->destruir_dato(hash->tabla_hash[pos]->valor);
+		}
+		free((char*)hash->tabla_hash[pos]->clave); //Libero las claves.
+		free(hash->tabla_hash[pos]);  //Libero cada nodo.
+		pos++;
+	}
+	free(hash->tabla_hash); //libero el arreglo de punteros.
+	free(hash); //Libero el hash.
+}
 
 /* Iterador del hash */
 
