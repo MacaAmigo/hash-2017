@@ -93,12 +93,14 @@ bool redimensionar_hash(hast_t* hash,size_t n){
 	hash_campo_t* tabla_nueva=malloc(sizeof(hash_campo_t)*n);  //pide memoria para la tabla
 	if(!tabla_nueva)
 		return false;
+	for (size_t j=0;j<tamanio_nuevo;j++){
+		tabla_nueva[i]=hash_campo_crear();
+	}
 	for(size_t i=0;i<hash->tamanio; i++){
 		hash_campo_t actual=hash->tabla_hash[i];    //actual=nodo
 		if(actual.estado==OCUPADO){                 //si el nodo esta ocupado
 			size_t i = funcion_hashing(actual.clave, tamanio_nuevo); //rehashea
-			if(tabla_nueva[i].estado==OCUPADO)  //tabla nueva no tiene [i]?
-				//Falta crear los nodos de la tabla_nueva
+			if(tabla_nueva[i].estado==OCUPADO)
 				i=funcion_perturbacion(i);
 			tabla_nueva[i]=actual;
 		}
@@ -117,6 +119,10 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 	size_t i = funcion_hashing(clave, hash->tamanio); 
 	hash_campo_t actual=hash->tabla_hash[i];
 	while(actual.estado!=VACIO && strcmp(actual.clave,clave)!=0){
+		if(actual.clave!=NULL){
+			if(strcmp(actual.clave,clave==0)
+				break;
+		}
 		i++;
 		if(i==hash->tamanio)
 			i=0;
@@ -237,7 +243,7 @@ bool hash_iter_avanzar(hash_iter_t *iter){
 }
 
 const char* hash_iter_ver_actual(const hash_iter_t *iter){
-	return (iter->hash->tabla_hash)[iter->pos_actual].calve;
+	return (iter->hash->tabla_hash)[iter->pos_actual].clave;
 }
 
 bool hash_iter_al_final(const hash_iter_t *iter){
