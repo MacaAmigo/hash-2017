@@ -64,7 +64,7 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
 /*Recibe una posicion donde sucede una colision y resuelve dicha colision. Devuelve
 una nueva posicion proximo a la colision.*/
 size_t funcion_perturbacion(hash_t* hash, size_t i){
-	while(hash->tabla_hash[i].estado==OCUPADO){
+	while(hash->tabla_hash[i].estado!=VACIO){
 		i++;
 	}
 	return i;
@@ -95,20 +95,26 @@ bool redimensionar_hash(hast_t* hash,size_t n){
 	return true;
 
 }
-
 bool hash_guardar(hash_t *hash, const char *clave, void *dato){
-	double factor_carga_actual=(hash->tamanio+1)/hash->ocupados;
-	if(factor_carga_actual>FACTOR_CARGA_MAX){
-		if(!redimensionar_hash(hash,AUMENTO_TAM))
-			return false;
-	}
 	size_t i=funcion_hash(clave)%(hash->tamanio);
-	if(hash->tabla_hash[i].estado==OCUPADO)
-		i=funcion_perturbacion(i);
-	hash->tabla_hash[i].clave=strdup(clave);
+	hash_campo_t actual=hash->tabla_hash[i];
+	while(actual.estado!=VACIO && strcmp(actual.clave,clave)!=0){
+		i++;
+		actual=hash->tabla_hash[i];
+	}
+	if(actual.estado==VACIO){
+		double factor_carga_futuro=(hash->tamanio)/(hash->ocupados+1);
+		if(factor_carga_futuro>FACTOR_CARGA_MAX){
+			if(!redimensionar_hash(hash,AUMENTO_TAM))
+			return false;
+		}
+		hash->tabla_hash[i].clave=strdup(clave);
+		hash->ocupados++;
+	}
 	hash->tabla_hash[i].valor=dato;
 	return true;
 }
+
 
 void *hash_borrar(hash_t *hash, const char *clave);
 void *hash_obtener(const hash_t *hash, const char *clave);
