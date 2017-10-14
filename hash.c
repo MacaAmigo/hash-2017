@@ -6,7 +6,7 @@
 #define TAM_INI 50
 #define FACTOR_CARGA_MAX 0.7
 #define FACTOR_CARGA_MIN 0.3
-#define AUMENTO_TAM 2
+#define REDIMENSION 2
 
 
 typedef enum estados {
@@ -87,10 +87,9 @@ hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
 	return hash;
 }
 
-/*Recibe un hash creado y un numero y multiplica el tamanio actual del hash por
+/*Recibe un hash creado y un tamanio nuevo y redimensiona el tamanio actual del hash por
 el numero pasado por parametro. Devuelve false en caso de error.*/
-bool redimensionar_hash(hash_t* hash,size_t n){
-	size_t tamanio_nuevo=hash->tamanio*n;  //agranda el tamanio actual multiplicado x n
+bool redimensionar_hash(hash_t* hash,size_t tamanio_nuevo){
 	hash_campo_t* tabla_nueva=malloc(sizeof(hash_campo_t)*tamanio_nuevo);  //pide memoria para la tabla
 	if(!tabla_nueva)
 		return false;
@@ -131,7 +130,7 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 	}
 	if(actual.estado==VACIO){
 		if((hash->usados+1)/(hash->tamanio)>FACTOR_CARGA_MAX){
-			if(!redimensionar_hash(hash,AUMENTO_TAM))
+			if(!redimensionar_hash(hash,hash->tamanio*REDIMENSION))
 			return false;
 		}
 		(hash->tabla_hash[i]).clave=strdup(clave);
@@ -144,7 +143,7 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 
 void* hash_borrar(hash_t *hash, const char *clave){
 	if (((hash->usados-1)/hash->tamanio) < FACTOR_CARGA_MIN && hash->tamanio>TAM_INI){
-		if(!redimensionar_hash(hash, 0.5))
+		if(!redimensionar_hash(hash, hash->tamanio/REDIMENSION))
 			return NULL;
 	}
 	size_t pos = funcion_hashing(clave, hash->tamanio);
