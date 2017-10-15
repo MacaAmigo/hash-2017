@@ -4,8 +4,8 @@
 #include <string.h>
 #include "hash.h"
 #define TAM_INI 50
-#define FACTOR_CARGA_MAX 0.6
-#define FACTOR_CARGA_MIN 0.1
+#define FACTOR_CARGA_MAX 0.7
+#define FACTOR_CARGA_MIN 0.3
 #define REDIMENSION 2
 
 
@@ -92,12 +92,12 @@ el numero pasado por parametro. Devuelve false en caso de error.*/
 bool redimensionar_hash(hash_t* hash,size_t tamanio_nuevo){
 	hash_campo_t* tabla_nueva = calloc (tamanio_nuevo, sizeof(hash_campo_t));  //pide memoria para la tabla
 	if (! tabla_nueva) return false;
-	
+
 	/* Crea los nodos de la nueva tabla*/
 	for (size_t j = 0; j < tamanio_nuevo; j++){
 		tabla_nueva[j] = hash_campo_crear();
 	}
-	
+
 	/*Itero el viejo hash para obtener el par clave-valor*/
 	for (size_t i = 0; i < hash->tamanio; i++){
 		hash_campo_t actual = hash->tabla_hash[i];
@@ -113,7 +113,7 @@ bool redimensionar_hash(hash_t* hash,size_t tamanio_nuevo){
 		tabla_nueva[posicion].valor = dato;
 		tabla_nueva[posicion].clave = strdup(clave);
 		tabla_nueva[posicion].estado = OCUPADO ;
-		
+
 	}
 	 /*Libero la vieja tabla hash*/
 	free (hash->tabla_hash);
@@ -145,16 +145,15 @@ bool redimensionar_hash(hash_t* hash,size_t tamanio_nuevo){
 	hash->tabla_hash=tabla_nueva;
 	hash->tamanio=tamanio_nuevo;
 	return true;
-
 }*/
 bool hash_guardar(hash_t *hash, const char *clave, void *dato){
-	if ((double)(hash_cantidad(hash)+1)/(double)hash->tamanio >= FACTOR_CARGA_MAX){
+	if ((double long)(hash_cantidad(hash)+1)/(double long)hash->tamanio >= FACTOR_CARGA_MAX){
 		if(!redimensionar_hash(hash, hash->tamanio*REDIMENSION))		return false;
 	}
 	size_t pos = funcion_hashing(clave, hash->tamanio);
 	hash_campo_t actual = hash->tabla_hash[pos];
 	if (hash_pertenece(hash, clave)){ //Caso en el que hay que reemplazar valor
-		while (actual.estado != VACIO && pos < hash->tamanio){                
+		while (actual.estado != VACIO && pos < hash->tamanio){
 			if((actual.estado == OCUPADO) && (strcmp(actual.clave, clave) == 0)){ //La clave es la misma
 				if (hash->destruir_dato){
 					hash->destruir_dato(hash->tabla_hash[pos].valor);  //Destruyo el valor.
@@ -166,18 +165,20 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 		}
 	}
 	while (pos < hash->tamanio){ //Caso en el que puedo guardar o debo buscar otra posición
-		if (actual.estado == VACIO){                             
+		if (actual.estado == VACIO){
 			(hash->tabla_hash[pos]).clave = strdup(clave);
 			(hash->tabla_hash[pos]).estado = OCUPADO;
 			(hash->tabla_hash[pos]).valor = dato;
 			hash->usados++;
 			return true;
 		}
+		pos++;
 	}
+	return false;
 }
 
 void* hash_borrar(hash_t *hash, const char *clave){
-	if (((hash->usados-1)/hash->tamanio) < FACTOR_CARGA_MIN && hash->tamanio>TAM_INI){
+	if (((double long)(hash->usados-1)/(double long)hash->tamanio) < FACTOR_CARGA_MIN && hash->tamanio>TAM_INI){
 		if(!redimensionar_hash(hash, hash->tamanio/REDIMENSION))
 			return NULL;
 	}
@@ -258,7 +259,7 @@ hash_iter_t *hash_iter_crear(const hash_t *hash){
 	if(!iter)  return NULL;
 	iter->hash = hash;
 	if (hash_cantidad(hash) == 0) {
-		iter->pos_actual = 0;		
+		iter->pos_actual = 0;
 		return iter;
 	}
 	size_t pos = 0;
@@ -274,8 +275,8 @@ hash_iter_t *hash_iter_crear(const hash_t *hash){
 bool hash_iter_avanzar(hash_iter_t *iter){
 	if (hash_iter_al_final(iter)) return false;
 	iter->pos_actual++;
-	while (iter->pos_actual < iter->hash->tamanio){  
-		if (iter->hash->tabla_hash[iter->pos_actual].estado == OCUPADO)  break; 
+	while (iter->pos_actual < iter->hash->tamanio){
+		if (iter->hash->tabla_hash[iter->pos_actual].estado == OCUPADO)  break;
 		iter->pos_actual++;
 	}
 	return true;
@@ -288,7 +289,7 @@ const char* hash_iter_ver_actual(const hash_iter_t *iter){
 bool hash_iter_al_final(const hash_iter_t *iter){
 	if (hash_cantidad(iter->hash) == 0) return true;
 	size_t aux = iter->pos_actual;
-	while (aux < iter->hash->tamanio){  
+	while (aux < iter->hash->tamanio){
 		if ((iter->hash->tabla_hash[aux].estado == OCUPADO)){
 			return false;
 		}
@@ -299,5 +300,5 @@ bool hash_iter_al_final(const hash_iter_t *iter){
 
 void hash_iter_destruir(hash_iter_t* iter){
 	free(iter);
-	return;
+return;
 }
