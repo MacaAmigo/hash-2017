@@ -80,14 +80,15 @@ bool claves_destruir(hash_t* hash){
 	while (pos < hash->tamanio){
 		free((char*)hash->tabla_hash[pos].clave); //Libero las claves.
 		pos++;
-	}		
-	return true;	
+	}
+	return true;
 }
+
 //Recibe un hash y una clave. Devuelve la posicion de la clave.
 //Pre: El hash ha sido creado. Recibe una clave.
 //Pos: Devuelve la posicion de la clave. Devuelve -1 en caso de no encontrase.
 int encontrar_posicion(const hash_t *hash, const char *clave){
-	size_t pos = funcion_hashing(clave,hash->tamanio);
+	int pos = 0;
 	while(hash->tabla_hash[pos].estado != VACIO){
 		if(hash->tabla_hash[pos].estado == OCUPADO){
 			if(strcmp(hash->tabla_hash[pos].clave,clave) == 0){
@@ -97,8 +98,7 @@ int encontrar_posicion(const hash_t *hash, const char *clave){
 		pos++;
 		if(pos == hash->tamanio) pos = 0;
 	}
-	if(hash->tabla_hash[pos].estado==VACIO)
-		return -1;
+	if(hash->tabla_hash[pos].estado==VACIO) return -1;
 	return pos;
 }
 
@@ -146,7 +146,7 @@ bool redimensionar_hash(hash_t* hash,size_t tamanio_nuevo){
 bool redimensionar_hash(hash_t*hash, size_t tamanio){
 	hash_campo_t* tabla_nueva = calloc (tamanio, sizeof(hash_campo_t));
 	if (!tabla_nueva) return false;
-	//Creo los nodos de la nueva tabla hash 
+	//Creo los nodos de la nueva tabla hash
 	size_t pos_n = 0;
 	while (pos_n < tamanio){
 		tabla_nueva[pos_n] = hash_campo_crear();
@@ -161,13 +161,12 @@ bool redimensionar_hash(hash_t*hash, size_t tamanio){
 				if(tabla_nueva[pos_hash].estado == VACIO) break;
 				pos_hash++;
 				if(pos_hash == tamanio) pos_hash = 0;
-
 			}
 			//tabla_nueva[pos_hash] = hash->tabla_hash[pos];
 			tabla_nueva[pos_hash].valor = dato;
 			tabla_nueva[pos_hash].clave = strdup(clave);
 			tabla_nueva[pos_hash].estado = OCUPADO;
-		
+
 		}
 		pos++;
 	}
@@ -175,7 +174,7 @@ bool redimensionar_hash(hash_t*hash, size_t tamanio){
 	if (!claves_destruir(hash)){
 		return false;
 	}
-	
+
 	free(hash->tabla_hash);
 	hash->tabla_hash = tabla_nueva;
 	hash->tamanio = tamanio;
@@ -185,7 +184,7 @@ bool redimensionar_hash(hash_t*hash, size_t tamanio){
 bool redimensionar_hash(hash_t*hash, size_t tamanio){
 	hash_campo_t* tabla_nueva = calloc (tamanio, sizeof(hash_campo_t));
 	if (!tabla_nueva) return false;
-	//Creo los nodos de la nueva tabla hash 
+	//Creo los nodos de la nueva tabla hash
 	size_t pos_n = 0;
 	while (pos_n < tamanio){
 		tabla_nueva[pos_n] = hash_campo_crear();
@@ -195,7 +194,7 @@ bool redimensionar_hash(hash_t*hash, size_t tamanio){
 	while (!hash_iter_al_final(iter)){
 		const char* clave = hash_iter_ver_actual(iter);
 		void* dato = hash_obtener(hash,clave);
-		size_t pos_hash = funcion_hashing(clave, tamanio); 
+		size_t pos_hash = funcion_hashing(clave, tamanio);
 		if (((tabla_nueva[pos_hash].estado == OCUPADO)) && (strcmp(tabla_nueva[pos_hash].clave, clave)!= 0)){ //Caso en que hay que buscar otro lugar libre
 			while (pos_hash < tamanio){
 				if (tabla_nueva[pos_hash].estado == VACIO) break; //Corto la iteración y me queda la posición.
@@ -212,7 +211,7 @@ bool redimensionar_hash(hash_t*hash, size_t tamanio){
 	if (!claves_destruir(hash)){
 		return false;
 	}
-	
+
 	free(hash->tabla_hash);
 	hash->tabla_hash = tabla_nueva;
 	hash->tamanio = tamanio;
@@ -253,11 +252,11 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 	return false;
 }
 void* hash_borrar(hash_t *hash, const char *clave){
-	if ((1+hash_cantidad(hash)/hash->tamanio)<=FACTOR_CARGA_MIN){ 
+	if ((1+hash_cantidad(hash)/hash->tamanio)<=FACTOR_CARGA_MIN){
 		if(!redimensionar_hash(hash, hash->tamanio/REDIMENSION)) return NULL;
 	}
 	if (!hash_pertenece(hash,clave)) return NULL;
-	hash_campo_t actual = hash->tabla_hash[encontrar_elemento(hash, clave)];
+	hash_campo_t actual = hash->tabla_hash[(size_t)encontrar_posicion(hash, clave)];
 	actual.estado = BORRADO;
 	free((char*)(actual).clave);
 	(actual).clave = NULL;
@@ -266,19 +265,19 @@ void* hash_borrar(hash_t *hash, const char *clave){
 	hash->usados--;
 	return dato;
 }
-	
+
 /*
 void* hash_borrar(hash_t *hash, const char *clave){
-	if ((1+hash_cantidad(hash)/hash->tamanio)<=FACTOR_CARGA_MIN){ 
+	if ((1+hash_cantidad(hash)/hash->tamanio)<=FACTOR_CARGA_MIN){
 		if(!redimensionar_hash(hash, hash->tamanio/REDIMENSION)) return NULL;
 	}
 	if (!hash_pertenece(hash,clave)) return NULL;
-	size_t pos = funcion_hashing(clave, hash->tamanio);	
+	size_t pos = funcion_hashing(clave, hash->tamanio);
 	while (pos < hash->tamanio){
 		if (hash->tabla_hash[pos].clave != NULL){ // Valido porque si clave es NULL, strcmp pincha.
 			if (strcmp(hash->tabla_hash[pos].clave , clave) == 0 ) break; //Si la clave es la misma, entonces corto iteracion para quedarme con la posición.
 		}
-		pos++;	
+		pos++;
 	}
 	hash->tabla_hash[pos].estado = BORRADO;
 	free((char*)(hash->tabla_hash[pos]).clave);
@@ -291,7 +290,7 @@ void* hash_borrar(hash_t *hash, const char *clave){
 */
 void *hash_obtener(const hash_t *hash, const char *clave){
 	if (!hash_pertenece(hash,clave)) return NULL;
-	hash_campo_t actual = hash->tabla_hash[encontrar_elemento(hash, clave)];
+	hash_campo_t actual = hash->tabla_hash[(size_t)encontrar_posicion(hash, clave)];
 	return actual.valor;
 }
 
@@ -308,8 +307,9 @@ void *hash_obtener(const hash_t *hash, const char *clave){
 	return NULL;
 }*/
 bool hash_pertenece(const hash_t *hash, const char *clave){
-	hash_campo_t actual = hash->tabla_hash[encontrar_elemento(hash, clave)];
-	if(!actual) return false;
+	int posicion=encontrar_posicion(hash,clave);
+	if(posicion<0)
+		return false;
 	return true;
 }//ACA SIEMPRE DEVUELVE TRUE! CORREGIR!!!!
 
@@ -354,7 +354,7 @@ hash_iter_t *hash_iter_crear(const hash_t *hash){
 		if (iter->hash->tabla_hash[iter->pos_actual].estado == OCUPADO) break;
 		iter->pos_actual++;
 	}
-	
+
 	return iter;
 }
 
