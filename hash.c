@@ -86,9 +86,9 @@ bool claves_destruir(hash_t* hash){
 
 //Recibe un hash y una clave. Devuelve la posicion de la clave.
 //Pre: El hash ha sido creado. Recibe una clave.
-//Pos: Devuelve la posicion de la clave. Devuelve -1 en caso de no encontrase.
-int encontrar_posicion(const hash_t *hash, const char *clave){
-	int pos = 0;
+//Pos: Devuelve la posicion de la clave. Devuelve el tamanio del hash en caso de no econtrarse.
+size_t encontrar_posicion(const hash_t *hash, const char *clave){
+	size_t pos = funcion_hashing(clave,hash->tamanio);
 	while(hash->tabla_hash[pos].estado != VACIO){
 		if(hash->tabla_hash[pos].estado == OCUPADO){
 			if(strcmp(hash->tabla_hash[pos].clave,clave) == 0){
@@ -98,8 +98,8 @@ int encontrar_posicion(const hash_t *hash, const char *clave){
 		pos++;
 		if(pos == hash->tamanio) pos = 0;
 	}
-	if(hash->tabla_hash[pos].estado==VACIO) return -1;
-	return pos;
+	if(hash->tabla_hash[pos].estado==OCUPADO) return pos;
+	return hash->tamanio;
 }
 
 hash_t *hash_crear(hash_destruir_dato_t destruir_dato){
@@ -256,7 +256,7 @@ void* hash_borrar(hash_t *hash, const char *clave){
 		if(!redimensionar_hash(hash, hash->tamanio/REDIMENSION)) return NULL;
 	}
 	if (!hash_pertenece(hash,clave)) return NULL;
-	hash_campo_t actual = hash->tabla_hash[(size_t)encontrar_posicion(hash, clave)];
+	hash_campo_t actual = hash->tabla_hash[encontrar_posicion(hash, clave)];
 	actual.estado = BORRADO;
 	free((char*)(actual).clave);
 	(actual).clave = NULL;
@@ -290,7 +290,7 @@ void* hash_borrar(hash_t *hash, const char *clave){
 */
 void *hash_obtener(const hash_t *hash, const char *clave){
 	if (!hash_pertenece(hash,clave)) return NULL;
-	hash_campo_t actual = hash->tabla_hash[(size_t)encontrar_posicion(hash, clave)];
+	hash_campo_t actual = hash->tabla_hash[encontrar_posicion(hash, clave)];
 	return actual.valor;
 }
 
@@ -307,8 +307,8 @@ void *hash_obtener(const hash_t *hash, const char *clave){
 	return NULL;
 }*/
 bool hash_pertenece(const hash_t *hash, const char *clave){
-	int posicion=encontrar_posicion(hash,clave);
-	if(posicion<0)
+	size_t posicion=encontrar_posicion(hash,clave);
+	if(posicion==hash->tamanio)
 		return false;
 	return true;
 }//ACA SIEMPRE DEVUELVE TRUE! CORREGIR!!!!
