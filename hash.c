@@ -83,12 +83,10 @@ bool claves_destruir(hash_t* hash){
 	}		
 	return true;	
 }
-
-//Recibe un hash y una clave. Devuelve un nodo si coincide con la clave recibida, caso contrario, 
-// devuelve NULL.
+//Recibe un hash y una clave. Devuelve la posicion de la clave.
 //Pre: El hash ha sido creado. Recibe una clave.
-//Pos: Devuelve el nodo que coincide con la clave y su estado es OCUPADO.
-size_t encontrar_elemento (const hash_t *hash, const char *clave){
+//Pos: Devuelve la posicion de la clave. Devuelve -1 en caso de no encontrase.
+int encontrar_posicion(const hash_t *hash, const char *clave){
 	size_t pos = funcion_hashing(clave,hash->tamanio);
 	while(hash->tabla_hash[pos].estado != VACIO){
 		if(hash->tabla_hash[pos].estado == OCUPADO){
@@ -99,6 +97,8 @@ size_t encontrar_elemento (const hash_t *hash, const char *clave){
 		pos++;
 		if(pos == hash->tamanio) pos = 0;
 	}
+	if(hash->tabla_hash[pos].estado==VACIO)
+		return -1;
 	return pos;
 }
 
