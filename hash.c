@@ -9,7 +9,7 @@
 #define FACTOR_CARGA_MAX 0.60
 #define FACTOR_CARGA_MIN 0.10
 #define REDIMENSION 2
-
+#define ELEMENTO_MODIFICADO 1
 
 typedef enum estados {
 	VACIO,
@@ -134,9 +134,6 @@ bool redimensionar_hash(hash_t* hash,size_t tamanio_nuevo){
 				posicion = funcion_perturbacion(tabla_nueva,tamanio_nuevo,posicion);
 			tabla_nueva[posicion] = hash->tabla_hash[i];
 		}
-		else if(hash->tabla_hash[i].estado == BORRADO){
-			hash->usados -= 1;
-		}
 	}
 	free(hash->tabla_hash);
 	hash->tabla_hash = tabla_nueva;
@@ -145,7 +142,7 @@ bool redimensionar_hash(hash_t* hash,size_t tamanio_nuevo){
 }
 
 bool hash_guardar(hash_t *hash, const char *clave, void *dato){
-	if ((double)(hash_cantidad(hash)+1)/(double)hash->tamanio >= FACTOR_CARGA_MAX){
+	if ((double)(hash->usados + ELEMENTO_MODIFICADO)/(double)hash->tamanio >= FACTOR_CARGA_MAX){
 		if(!redimensionar_hash(hash, hash->tamanio*REDIMENSION))	return false;
 	}
 	int pos = encontrar_elemento(hash,clave);
@@ -174,8 +171,10 @@ bool hash_guardar(hash_t *hash, const char *clave, void *dato){
 }
 
 void* hash_borrar(hash_t *hash, const char *clave){
-	if ((1+hash_cantidad(hash)/hash->tamanio)<=FACTOR_CARGA_MIN){
-		if(!redimensionar_hash(hash, hash->tamanio/REDIMENSION)) return NULL;
+	if(hash->tamanio>TAM_INI){
+		if ( ( (double)(hash->usados - ELEMENTO_MODIFICADO) / (double)hash->tamanio ) <= FACTOR_CARGA_MIN){
+			if(!redimensionar_hash(hash, hash->tamanio/REDIMENSION)) return NULL;
+		}
 	}
 	if (!hash_pertenece(hash,clave)) return NULL;
 	int pos = encontrar_elemento(hash, clave);
